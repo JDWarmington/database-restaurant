@@ -1,0 +1,29 @@
+{
+  "name": "restaurant-tracker",
+  "private": true,
+  "version": "1.2.0",
+  "type": "module",
+  "description": "Restaurant Tracker — React + Vite frontend with a mock localStorage api and a backend scaffold for PostgreSQL.",
+  "scripts": {
+    "dev": "vite",
+    "server": "node --watch server/index.js",
+    "dev:full": "concurrently -k -n web,api -c green,blue \"npm:dev\" \"npm:server\"",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0",
+    "pg": "^8.13.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.26.2"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.1",
+    "concurrently": "^9.0.1",
+    "vite": "^5.4.8"
+  }
+}
