@@ -1,0 +1,63 @@
+SETUP:
+
+----- Install Node.js:
+
+winget install OpenJS.NodeJS.LTS
+
+----- Enable developer shell installations to run through shell calls:
+
+Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
+
+>>>>> Close and re-open PowerShell in new window
+
+----- Install PostgreSQL:
+
+winget install -e --id PostgreSQL.PostgreSQL.17
+
+
+----- Change working directory to project:
+
+cd [ENTER PROJECT ROOT DIRECTORY HERE]
+
+----- Set up Node.js in project:
+
+npm install
+
+----- Modify settings for PostgreSQL
+
+[Environment]::SetEnvironmentVariable("Path", $env:Path + ";C:\Program Files\PostgreSQL\17\bin", "User")
+
+>>>>> Close and re-open PowerShell in new window
+
+----- Change working directory to project:
+
+cd [ENTER PROJECT ROOT DIRECTORY HERE]
+
+----- Create database [PASSWORD = postgres]:
+
+createdb -U postgres restaurant_db
+psql -U postgres -d restaurant_db -f database/schema.sql
+
+----- Create .env file:
+
+copy .env.example .env
+
+@'
+VITE_DATA_MODE=api
+PGHOST=localhost
+PGPORT=5432
+PGDATABASE=restaurant_db
+PGUSER=postgres
+PGPASSWORD=postgres
+SERVER_PORT=3001
+'@ | Out-File -Encoding ASCII .env
+
+EXECUTION: 
+
+----- Change working directory to project:
+
+cd [ENTER PROJECT ROOT DIRECTORY HERE]
+
+----- Run app:
+
+npm run dev:full

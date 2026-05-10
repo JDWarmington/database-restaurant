@@ -1,0 +1,66 @@
+```
+I need you to implement the backend for this Restaurant Tracker project. The frontend, schema, and route scaffolding are already in place — your job is to fill in the missing pieces so the app works end-to-end against PostgreSQL.
+
+**Before you write anything, read these files to understand the contract:**
+
+- `README.md` — overall architecture and the partner TODO list
+- `docs/API_CONTRACT.md` — every endpoint the frontend calls, with exact request/response shapes
+- `database/schema.sql` — the 8 tables, fixed; do not modify
+- `server/README.md` — backend-specific guidance
+- All files in `server/routes/` — each has a TODO header with the SQL sketch for that route
+- `server/db.js` — TODO header shows the pg.Pool setup
+- `src/api/realApi.js` — the frontend's HTTP client, so you can see exactly what URLs and bodies it sends
+- `.env.example` — confirms which env variables are expected
+
+**What to implement:**
+
+1. **`server/db.js`** — Create a `pg.Pool` configured from the `PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, `PGPASSWORD` env variables via `dotenv`. Export a query helper.
+
+2. **`server/index.js`** — Verify CORS is enabled (`cors` is already in dependencies), JSON body parsing is set up, all routes are mounted, and there's a `/api/health/db` endpoint that pings the database. The file is mostly scaffolded; check what's missing.
+
+3. **All files in `server/routes/`** — Implement every handler currently returning `501 Not Implemented`. Each route file's TODO comments sketch the SQL. Follow the API contract exactly for request/response shapes.
+
+**Critical implementation rules, all from the README and contract:**
+
+- Use **quoted, PascalCase identifiers** in SQL: `SELECT "RestaurantId" FROM "Restaurant"`. Unquoted names get folded to lowercase and queries fail.
+- Alias columns to camelCase in `SELECT`: `SELECT "RestaurantId" AS id, "RestaurantName" AS name`. The contract requires camelCase JSON; the schema is PascalCase.
+- **Generate IDs manually** since PKs are plain INT (not IDENTITY/SERIAL): `SELECT COALESCE(MAX("RestaurantId"), 0) + 1 FROM "Restaurant"` inside the same transaction as the INSERT to avoid race conditions.
+- **Hash passwords with `bcryptjs`** in `/api/users/register` (it's in dependencies); compare hashes in `/api/users/login`. Never return the password field — `User` response shape is `{ id, username, email }` only.
+- Ratings must be integers 1–10. The schema has a CHECK constraint, but also reject out-of-range values in the handler with a 400 so the frontend gets a clean error.
+- Media `ImageAsText` is a Base64 data URL stored verbatim — don't try to decode or transform it.
+- Wrap multi-statement operations (ID-generation + INSERT) in transactions using a single pooled client.
+- Return appropriate HTTP status codes: 200 for GET/PUT, 201 for POST creates, 204 or `{ok: true}` for DELETE, 400 for validation errors, 401 for auth failures, 404 for missing resources, 500 for unexpected errors.
+
+**For the `/api/users/:userId/recommendations` endpoint specifically:** the README and contract don't fully spell out the algorithm. Read whatever guidance is in `server/routes/recommendations.js` and `docs/API_CONTRACT.md`. If the spec is ambiguous, pick the simplest reasonable approach (e.g., restaurants the user hasn't visited yet, ranked by other users' average ratings) and document the choice in a code comment.
+
+**Testing protocol:**
+
+After implementing each route file, before moving to the next:
+
+1. Start the server with `npm run server`.
+2. Hit the endpoint with `curl` (or PowerShell's `Invoke-RestMethod`) — at minimum a happy-path call and one validation-failure call. Confirm response shape matches the contract.
+3. Check the database directly with `psql -U postgres -d restaurant_db -c "SELECT * FROM \"TableName\";"` to confirm writes landed correctly.
+4. Fix any issues before moving on.
+
+After all routes are done:
+
+1. Run `npm run dev:full` to start frontend and backend together.
+2. In the browser, register a new user, create a restaurant, add a meal, log a visit, rate it, add a photo, add a wishlist item. Confirm each round-trips through Postgres (check with psql).
+3. Restart the server and confirm everything persists.
+
+**Things to ask me about rather than guess:**
+
+- If a contract field looks ambiguous or contradicts the schema
+- If you find a bug in the frontend that prevents testing (don't silently modify the frontend)
+- If the recommendations algorithm needs a domain decision I should weigh in on
+
+**Things you should NOT do:**
+
+- Don't modify `database/schema.sql` — the README says it's fixed
+- Don't modify `docs/API_CONTRACT.md` — the contract is the agreement
+- Don't modify any file under `src/` unless you find an actual bug, and ask me first if you do
+- Don't add new dependencies — everything you need (`pg`, `express`, `cors`, `bcryptjs`, `dotenv`) is already in `package.json`
+
+Start by reading the files listed above and giving me a one-paragraph summary of what you found and the order you'll implement the routes in. Then wait for me to confirm before writing code.
+
+```
