@@ -9,7 +9,9 @@
     "server": "node --watch server/index.js",
     "dev:full": "concurrently -k -n web,api -c green,blue \"npm:dev\" \"npm:server\"",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "db:reset": "bash database/reset.sh",
+    "seed": "node server/seed.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

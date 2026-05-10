@@ -1,6 +1,20 @@
 export function formatDate(value) {
   if (!value) return '';
-  const d = typeof value === 'string' ? new Date(value) : value;
+  // Postgres DATE columns come back as 'YYYY-MM-DD'. `new Date(str)` parses
+  // those as UTC midnight, which `toLocaleDateString` then shifts back a day
+  // for any timezone west of UTC. Build a local-midnight Date instead.
+  if (typeof value === 'string') {
+    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
+    if (m) {
+      const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+      return d.toLocaleDateString(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      });
+    }
+  }
+  const d = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(d.getTime())) return '';
   return d.toLocaleDateString(undefined, {
     year: 'numeric',

@@ -35,3 +35,6 @@ Thumbs.db
 
 # Claude local/private settings
 .claude/settings.local.json
+
+# Personal workflow / prompt notes (not part of the project)
+prompt*.md
