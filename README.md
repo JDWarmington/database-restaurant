@@ -63,47 +63,171 @@ wishlist items, 5 placeholder Base64 images.
 
 ---
 
-## 2. Partner: switch to PostgreSQL (api mode)
+## 2. Run the full stack (api mode, with PostgreSQL)
 
-Detailed walkthrough is in [`server/README.md`](server/README.md). Short
-version:
+This is the path to use if you want data to actually land in PostgreSQL
+instead of the browser's localStorage. Works on **macOS and Windows**;
+extra trouble-shooting notes are in [`database/SETUP.md`](database/SETUP.md).
 
-1. **Start PostgreSQL** locally (Homebrew on Mac: `brew services start
-   postgresql@16`).
-2. **Create the database**: `createdb -U postgres restaurant_db`.
-3. **Apply the schema**: `psql -U postgres -d restaurant_db -f database/schema.sql`.
-4. **Implement `server/db.js`** — the file's TODO header has the exact
-   `pg.Pool` snippet. Verify with
-   `curl http://localhost:3001/api/health/db`.
-5. **Implement `server/routes/*.js`** — every handler currently returns
-   `501 Not Implemented` with a TODO showing the SQL.
-6. **Flip the mode**: edit `.env` so `VITE_DATA_MODE=api`.
-7. **Start both servers**: `npm run dev:full` (backend on `:3001`, frontend
-   on `:5173`).
+### Prerequisites (both platforms)
 
-`docs/API_CONTRACT.md` lists every function the frontend calls and the
-exact request/response shape the backend must produce.
+- **Node.js 18+** — <https://nodejs.org/> (LTS installer). Verify with
+  `node --version`.
+- **PostgreSQL 16** — install steps differ by OS, see 2a below.
+- **Git** — needed to clone the repo. On Windows, install [Git for
+  Windows](https://git-scm.com/download/win); it ships with **Git Bash**,
+  which you'll want for the `npm run db:reset` script.
 
-### Partner PostgreSQL TODO
+All `npm` and `psql` commands below work in any terminal: macOS Terminal /
+zsh, Windows PowerShell, cmd, or Git Bash. The one exception is
+`npm run db:reset` (a bash script) — on Windows run it from **Git Bash**
+or use the manual psql equivalent shown in 2f.
 
-- [ ] Connect `pg` in `server/db.js` (TODO at the top of the file shows
-      the implementation).
-- [ ] Implement SQL for each route in `server/routes/*.js` (TODOs in each
-      file include the suggested `SELECT` projection and validation rules).
-- [ ] Use **quoted, mixed-case identifiers**: `"Restaurant"`,
-      `"RestaurantId"`. Unquoted names get folded to lowercase by Postgres
-      and queries fail.
-- [ ] **Manually generate IDs** — schema PKs are plain `INT` (not
-      `SERIAL`/`IDENTITY`). Pattern:
-      `SELECT COALESCE(MAX("…Id"), 0) + 1 FROM "…"`.
-- [ ] Test all CRUD routes end-to-end with the frontend in api mode.
-- [ ] Test Base64 media insert/select — POST a real
-      `data:image/png;base64,…` string, then re-fetch via
-      `/api/users/:userId/media` and confirm the round-trip.
-- [ ] Test the recommendations query
-      (`GET /api/users/:userId/recommendations`). The reference algorithm
-      lives in `src/api/mockApi.js → getRecommendations`; translate it to
-      SQL using the JOIN pattern in `server/routes/recommendations.js`.
+### 2a. Install and start PostgreSQL 16
+
+#### macOS (Homebrew)
+
+```bash
+brew install postgresql@16
+brew services start postgresql@16
+```
+
+If `psql` is not on your `PATH` afterward:
+
+```bash
+echo 'export PATH="/opt/homebrew/opt/postgresql@16/bin:$PATH"' >> ~/.zshrc
+source ~/.zshrc
+```
+
+(Use `/usr/local` instead of `/opt/homebrew` on Intel Macs.)
+
+Homebrew's PostgreSQL ships with a superuser named after your macOS
+account, not `postgres`. Create the role the app expects:
+
+```bash
+psql -d postgres -c "CREATE ROLE postgres WITH LOGIN SUPERUSER;"
+```
+
+By default Homebrew uses `trust` auth for local connections, so you can
+leave `PGPASSWORD` empty in `.env` (step 2c).
+
+#### Windows
+
+Easiest: download the official installer from
+<https://www.postgresql.org/download/windows/> (EnterpriseDB), pick
+**version 16**, and run it. During install:
+
+- When prompted for a **superuser password**, pick something simple like
+  `postgres` and remember it — you'll put it in `.env` (step 2c).
+- Keep the default port `5432`.
+- The installer registers PostgreSQL as a Windows service that starts
+  automatically. No need to start it manually.
+
+Or, with [winget](https://learn.microsoft.com/en-us/windows/package-manager/winget/):
+
+```powershell
+winget install PostgreSQL.PostgreSQL.16
+```
+
+Add `psql` to your `PATH` so the commands below work in any terminal.
+Open a **new** PowerShell after this:
+
+```powershell
+setx PATH "$env:PATH;C:\Program Files\PostgreSQL\16\bin"
+```
+
+Verify both platforms:
+
+```bash
+psql --version    # should print "psql (PostgreSQL) 16.x"
+```
+
+### 2b. Create the database and apply the schema
+
+From the project root:
+
+```bash
+createdb -U postgres restaurant_db
+psql -U postgres -d restaurant_db -f database/schema.sql
+```
+
+On Windows you'll be prompted for the postgres password you set during
+install. Verify the eight tables exist:
+
+```bash
+psql -U postgres -d restaurant_db -c "\dt"
+```
+
+### 2c. Configure `.env`
+
+```bash
+# macOS / Linux / Git Bash
+cp .env.example .env
+
+# Windows PowerShell
+copy .env.example .env
+```
+
+Then edit `.env` and set:
+
+```
+VITE_DATA_MODE=api
+PGPASSWORD=<the password you set during install, or empty on Mac/Homebrew>
+```
+
+> **Important:** if `VITE_DATA_MODE` stays `mock`, the frontend will keep
+> reading/writing localStorage and you'll see zero API calls and an empty
+> database.
+
+### 2d. Install dependencies, seed, and run
+
+```bash
+npm install
+npm run seed          # populates the 8 tables with sample data
+npm run dev:full      # frontend on :5173, backend on :3001
+```
+
+Open <http://localhost:5173>. Demo logins: `alex@demo.com` / `demo123`,
+`sam@demo.com` / `demo123`.
+
+### 2e. Verify data is hitting the database
+
+```bash
+# Health check (no DB)
+curl http://localhost:3001/api/health
+
+# Health check (pings PostgreSQL)
+curl http://localhost:3001/api/health/db
+
+# Row counts + a peek at users / meals / recent ratings
+psql -U postgres -d restaurant_db -f database/peek.sql
+```
+
+Windows PowerShell users: `curl` is aliased to `Invoke-WebRequest`. Use
+either `curl.exe http://localhost:3001/api/health` or just open the URL
+in a browser.
+
+Add a restaurant or rating in the UI, then re-run `peek.sql` — the row
+counts should go up.
+
+### 2f. Reset the database
+
+```bash
+npm run db:reset      # drop + recreate + re-apply schema (run from Git Bash on Windows)
+npm run seed          # repopulate
+```
+
+If you're on Windows and don't have Git Bash, do it manually:
+
+```bash
+psql -U postgres -d postgres -c "DROP DATABASE IF EXISTS restaurant_db;"
+createdb -U postgres restaurant_db
+psql -U postgres -d restaurant_db -f database/schema.sql
+npm run seed
+```
+
+`docs/API_CONTRACT.md` documents every endpoint the frontend calls if you
+need the exact request/response shapes.
 
 ---
 
